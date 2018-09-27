@@ -1,6 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -23,14 +23,7 @@ namespace APRipper
                 SslProtocols = SslProtocols.Tls12,
             };
 
-            HttpClient = new HttpClient(clientHandler, true)
-            {
-                Timeout = TimeSpan.FromMinutes(1)
-            };
-
-            var cultureInfo = new CultureInfo("en-GB", false);
-            CultureInfo.DefaultThreadCurrentCulture = cultureInfo;
-            CultureInfo.DefaultThreadCurrentUICulture = cultureInfo;
+            HttpClient = new HttpClient(clientHandler, true);
         }
         
         public static async Task Main()
@@ -49,15 +42,14 @@ namespace APRipper
                 GroupBy(match => match.Value).Select(match => match.First()).ToImmutableList();
 
             var location = new FileInfo(new Uri(Assembly.GetEntryAssembly().GetName().CodeBase).AbsolutePath).Directory;
-            location?.CreateSubdirectory("Downloads");
-            location?.CreateSubdirectory($"Downloads/{seriesString}");
             var downloadLocation = location?.CreateSubdirectory($"Downloads/{seriesString}/{chapterString}");
+            var tasks = new List<Task>();
             
             Console.WriteLine("Downloading pages...");
             
             for (var i = 0; i < pages.Count; i++)
             {
-                var fileName = $"{i}.jpg";
+                string fileName;
 
                 if (pages.Count < 9)
                 {
@@ -83,16 +75,21 @@ namespace APRipper
                     }
                 }
                 
-                
                 var pageAddress = $"{pages[i].Value.Remove(pages[i].Value.LastIndexOf("/") + 1)}1080x1536.jpg";
-                
-                await File.WriteAllBytesAsync($"{downloadLocation?.FullName}/{fileName}", await HttpClient.GetByteArrayAsync(pageAddress));
+                tasks.Add(Download(pageAddress, downloadLocation?.FullName, fileName));
             }
+
+            Task.WaitAll(tasks.ToArray());
             
             Console.WriteLine("Download complete!!");
             Console.WriteLine("Please run the program again if you wish to download another chapter.");
             Console.WriteLine("Press any key to continue...");
             Console.ReadKey();
+        }
+
+        private static async Task Download(string pageAddress, string downloadLocation, string fileName)
+        {
+            await File.WriteAllBytesAsync($"{downloadLocation}/{fileName}", await HttpClient.GetByteArrayAsync(pageAddress));
         }
     }
 }
