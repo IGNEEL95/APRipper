@@ -1,7 +1,7 @@
 # APRipper
 Alphapolis HQ mango ripper
 
-##Usage
+## Usage
 
 Run the executable, paste the address, press enter.
 
