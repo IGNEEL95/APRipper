@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.IO;
-using System.Linq;
 using System.Net.Http;
 using System.Reflection;
 using System.Security.Authentication;
@@ -26,20 +24,26 @@ namespace APRipper
             HttpClient = new HttpClient(clientHandler, true);
         }
         
-        public static async Task Main()
+        public static async Task Main(string[] args)
         {
-            Console.WriteLine("Please paste the address to the chapter that you want to download from alphapolis");
-            var uri = new Uri(Console.ReadLine());
+            Uri uri;
+            
+            if (args.Length > 0)
+            {
+                uri = new Uri(args[0]);
+            }
+            else
+            {
+                Console.WriteLine("Please paste the address to the chapter that you want to download from alphapolis");
+                uri = new Uri(Console.ReadLine());
+            }
 
-            var uriString = uri.AbsoluteUri;
-
-            var seriesString = Regex.Replace(uriString, "https:\\/\\/www[.]alphapolis[.]co[.]jp\\/manga\\/official\\/", string.Empty);
+            var seriesString = Regex.Replace(uri.AbsoluteUri, "https:\\/\\/www[.]alphapolis[.]co[.]jp\\/manga\\/official\\/", string.Empty);
             seriesString = seriesString.Remove(seriesString.IndexOf("/"));   
-            var chapterString = Regex.Replace(uriString, "https:\\/\\/www[.]alphapolis[.]co[.]jp\\/manga\\/official/[0-9]+\\/", string.Empty);
+            var chapterString = Regex.Replace(uri.AbsoluteUri, "https:\\/\\/www[.]alphapolis[.]co[.]jp\\/manga\\/official/[0-9]+\\/", string.Empty);
             
             var page = await HttpClient.GetStringAsync(uri);
-            var pages = Regex.Matches(page, $"https:\\/\\/cdn-image[.]alphapolis[.]co[.]jp\\/official_manga\\/page\\/{seriesString}\\/{chapterString}\\/.*\\/.*[.]jpg").
-                GroupBy(match => match.Value).Select(match => match.First()).ToImmutableList();
+            var pages = Regex.Matches(page, "_pages[.]push.*[.]jpg");
 
             var location = new FileInfo(new Uri(Assembly.GetEntryAssembly().GetName().CodeBase).AbsolutePath).Directory;
             var downloadLocation = location?.CreateSubdirectory($"Downloads/{seriesString}/{chapterString}");
@@ -74,22 +78,25 @@ namespace APRipper
                         fileName = $"{i + 1}.jpg";
                     }
                 }
-                
-                var pageAddress = $"{pages[i].Value.Remove(pages[i].Value.LastIndexOf("/") + 1)}1080x1536.jpg";
-                tasks.Add(Download(pageAddress, downloadLocation?.FullName, fileName));
+
+                var pageAddress = pages[i].Value.Substring(pages[i].Value.IndexOf("\"") + 1);
+                pageAddress = $"{pageAddress.Remove(pageAddress.LastIndexOf("/") + 1)}1080x1536.jpg";
+                tasks.Add(Task.Run(async () =>
+                {
+                    await File.WriteAllBytesAsync($"{downloadLocation}/{fileName}", await HttpClient.GetByteArrayAsync(pageAddress));
+                }));
             }
 
             Task.WaitAll(tasks.ToArray());
             
             Console.WriteLine("Download complete!!");
             Console.WriteLine("Please run the program again if you wish to download another chapter.");
-            Console.WriteLine("Press any key to continue...");
-            Console.ReadKey();
-        }
 
-        private static async Task Download(string pageAddress, string downloadLocation, string fileName)
-        {
-            await File.WriteAllBytesAsync($"{downloadLocation}/{fileName}", await HttpClient.GetByteArrayAsync(pageAddress));
+            if (args.Length == 0)
+            {
+                Console.WriteLine("Press any key to continue...");
+                Console.ReadKey();
+            }
         }
     }
 }
