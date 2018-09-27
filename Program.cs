@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Reflection;
@@ -47,7 +46,7 @@ namespace APRipper
 
             var location = new FileInfo(new Uri(Assembly.GetEntryAssembly().GetName().CodeBase).AbsolutePath).Directory;
             var downloadLocation = location?.CreateSubdirectory($"Downloads/{seriesString}/{chapterString}");
-            var tasks = new List<Task>();
+            var tasks = new Task[pages.Count];
             
             Console.WriteLine("Downloading pages...");
             
@@ -81,13 +80,14 @@ namespace APRipper
 
                 var pageAddress = pages[i].Value.Substring(pages[i].Value.IndexOf("\"") + 1);
                 pageAddress = $"{pageAddress.Remove(pageAddress.LastIndexOf("/") + 1)}1080x1536.jpg";
-                tasks.Add(Task.Run(async () =>
+                
+                tasks[i] = Task.Run(async () =>
                 {
                     await File.WriteAllBytesAsync($"{downloadLocation}/{fileName}", await HttpClient.GetByteArrayAsync(pageAddress));
-                }));
+                });
             }
 
-            Task.WaitAll(tasks.ToArray());
+            Task.WaitAll(tasks);
             
             Console.WriteLine("Download complete!!");
             Console.WriteLine("Please run the program again if you wish to download another chapter.");
