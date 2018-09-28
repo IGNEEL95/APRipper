@@ -37,11 +37,9 @@ namespace APRipper
                 uri = new Uri(Console.ReadLine());
             }
 
-            var seriesString = Regex.Replace(uri.AbsoluteUri,
-                "https:\\/\\/www[.]alphapolis[.]co[.]jp\\/manga\\/official\\/", string.Empty);
+            var seriesString = Regex.Replace(uri.AbsoluteUri, "https:\\/\\/www[.]alphapolis[.]co[.]jp\\/manga\\/official\\/", string.Empty);
             seriesString = seriesString.Remove(seriesString.IndexOf("/", StringComparison.OrdinalIgnoreCase));
-            var chapterString = Regex.Replace(uri.AbsoluteUri,
-                "https:\\/\\/www[.]alphapolis[.]co[.]jp\\/manga\\/official/[0-9]+\\/", string.Empty);
+            var chapterString = Regex.Replace(uri.AbsoluteUri, "https:\\/\\/www[.]alphapolis[.]co[.]jp\\/manga\\/official/[0-9]+\\/", string.Empty);
 
             var page = await HttpClient.GetStringAsync(uri);
             var pages = Regex.Matches(page, "_pages[.]push.*[.]jpg");
@@ -74,15 +72,12 @@ namespace APRipper
                         fileName = $"{i + 1}.jpg";
                 }
 
-                var pageAddress = pages[i].Value
-                    .Substring(pages[i].Value.IndexOf("\"", StringComparison.OrdinalIgnoreCase) + 1);
-                pageAddress =
-                    $"{pageAddress.Remove(pageAddress.LastIndexOf("/", StringComparison.OrdinalIgnoreCase) + 1)}1080x1536.jpg";
+                var pageAddress = pages[i].Value.Substring(pages[i].Value.IndexOf("\"", StringComparison.OrdinalIgnoreCase) + 1);
+                pageAddress = $"{pageAddress.Remove(pageAddress.LastIndexOf("/", StringComparison.OrdinalIgnoreCase) + 1)}1080x1536.jpg";
 
                 tasks[i] = Task.Run(async () =>
                 {
-                    await File.WriteAllBytesAsync($"{downloadLocation}/{fileName}",
-                        await HttpClient.GetByteArrayAsync(pageAddress));
+                    await File.WriteAllBytesAsync($"{downloadLocation}/{fileName}", await HttpClient.GetByteArrayAsync(pageAddress));
                 });
             }
 
